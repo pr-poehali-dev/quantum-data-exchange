@@ -6,6 +6,7 @@ import type * as THREE from "three"
 import type { BookParams, MaterialProps } from "./types"
 import { Book } from "./book-3d-model"
 import { CameraController } from "./camera-controller"
+import { applyWebGLFix } from "./webgl-fix"
 
 function RenderDetector({ onFirstRender }: { onFirstRender: () => void }) {
   const hasRendered = useRef(false)
@@ -36,6 +37,7 @@ export function BookModel({
   const controlsRef = useRef<any>()
   const canvasRef = useRef<HTMLDivElement>(null)
   const [hasFirstRender, setHasFirstRender] = useState(false)
+  const [webGLError, setWebGLError] = useState(false)
 
   useEffect(() => {
     const handleGlobalPointerUp = (event: PointerEvent) => {
@@ -77,6 +79,42 @@ export function BookModel({
     setHasFirstRender(true)
   }
 
+  useEffect(() => {
+    applyWebGLFix();
+    
+    const checkWebGL = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+        if (!gl) {
+          setWebGLError(true)
+          return false
+        }
+        return true
+      } catch (e) {
+        setWebGLError(true)
+        return false
+      }
+    }
+    
+    const hasWebGL = checkWebGL()
+    if (hasWebGL && onReady) {
+      const timer = setTimeout(() => onReady(true), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  if (webGLError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="text-center p-8">
+          <p className="text-white text-lg">3D-модель временно недоступна</p>
+          <p className="text-gray-400 text-sm mt-2">Попробуйте обновить страницу</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div ref={canvasRef} className="w-full h-full">
       <Canvas
@@ -85,6 +123,15 @@ export function BookModel({
         resize={{ scroll: false, debounce: { scroll: 0, resize: 0 } }}
         dpr={[1, 2]}
         legacy={true}
+        gl={{ 
+          preserveDrawingBuffer: true,
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance'
+        }}
+        onCreated={(state) => {
+          state.gl.setClearColor('#000000', 0)
+        }}
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.5} />

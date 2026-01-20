@@ -3,4 +3,14 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-createRoot(document.getElementById("root")!).render(<App />);
+const initApp = () => {
+  requestAnimationFrame(() => {
+    createRoot(document.getElementById("root")!).render(<App />);
+  });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
